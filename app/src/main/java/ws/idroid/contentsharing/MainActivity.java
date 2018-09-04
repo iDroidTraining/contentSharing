@@ -2,15 +2,16 @@ package ws.idroid.contentsharing;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.Intent;
+import android.content.*;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.*;
 import android.net.Uri;
-import android.os.Bundle;
-import android.provider.MediaStore;
+import android.os.*;
+import android.provider.*;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.widget.*;
 
 import java.io.File;
@@ -48,7 +49,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         verifyStoragePermissions(MainActivity.this);
+        ActivityCompat.requestPermissions(
+                MainActivity.this,
+                PERMISSIONS_STORAGE,
+                REQUEST_EXTERNAL_STORAGE
+        );
         findViews();
+
 
     }
 
@@ -84,19 +91,55 @@ public class MainActivity extends AppCompatActivity {
 
         if (resultCode == RESULT_OK) {
             Uri selectedImageUri = intent.getData();
+            Log.i("image path Uri", "path = " + selectedImageUri);
             imagePath = getPath(selectedImageUri);
             Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
             btn_select.setImageBitmap(bitmap);
         }
     }
 
-    public String getPath(Uri uri) {
-        String[] projection = {MediaStore.Images.Media.DATA};
-        Cursor cursor = managedQuery(uri, projection, null, null, null);
-        int column_index = cursor
-                .getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+    public String getPath(Uri selectedImageUri) {
+        String[] projection = {MediaStore.MediaColumns.DATA};
+        CursorLoader cursorLoader = new CursorLoader(this, selectedImageUri, projection, null,
+                null, null);
+        Cursor cursor = cursorLoader.loadInBackground();
+        int columnIndexOrThrow = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA);
         cursor.moveToFirst();
-        return cursor.getString(column_index);
+        String selectedImagePath = cursor.getString(columnIndexOrThrow);
+        Log.i("image path", "path = " + selectedImagePath);
+        if (selectedImagePath != null) {
+            return selectedImagePath;
+        } else {
+            return getPath2(this, selectedImageUri);
+        }
+    }
+
+    private String getPath2(Context context, Uri uri) {
+        if (uri == null) {
+            return null;
+        }
+
+        String[] projection = {MediaStore.Images.Media.DATA};
+        Cursor cursor;
+        if (Build.VERSION.SDK_INT > 19) {
+            String wholeID = DocumentsContract.getDocumentId(uri);
+            String id = wholeID.split(":")[1];
+            String sel = MediaStore.Images.Media._ID + "=?";
+            cursor = context.getContentResolver().query(MediaStore.Images.Media
+                    .EXTERNAL_CONTENT_URI, projection, sel, new String[]{id}, null);
+        } else {
+            cursor = context.getContentResolver().query(uri, projection, null, null, null);
+        }
+        String path = null;
+        try {
+            int columnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
+            cursor.moveToFirst();
+            path = cursor.getString(columnIndex).toString();
+            cursor.close();
+        } catch (NullPointerException e) {
+
+        }
+        return path;
     }
 
     private void shareImage() {

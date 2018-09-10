@@ -1,5 +1,6 @@
 apply plugin: 'com.android.application'
-
+apply plugin: 'checkstyle'
+apply plugin: 'pmd'
 android {
     compileSdkVersion 28
     defaultConfig {
@@ -27,6 +28,43 @@ dependencies {
     implementation 'com.android.support:appcompat-v7:28.0.0-rc02'
     implementation 'com.android.support.constraint:constraint-layout:1.1.3'
     testImplementation 'junit:junit:4.12'
+    implementation 'com.jakewharton:butterknife:8.8.1'
+    annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+}
+project.afterEvaluate {
+    preBuild.dependsOn 'checkstyle'
+    preBuild.dependsOn 'pmd'
+}
+task checkstyle(type: Checkstyle) {
+    configFile file("${project.rootDir}/config/quality/checkstyle/checkstyle.xml")
+    source 'src/main/java'
+    include '**/*.java'
+    exclude '**/gen/**'
+    excludes = ['.*/**', 'gradle*', 'build/**', '*.iml', '*.log', '**/*.jar']
+    classpath = files()
+}
+task pmd(type: Pmd) {
+    group = 'verification'
+    ruleSetFiles = files("${project.rootDir}/config/quality/pmd/pmd-rules.xml")
+    ruleSets = ["java-basic", "java-braces"]
+    source 'src/main/java'
+    include '**/*.java'
+    exclude '**/gen/**'
+    classpath = files()
+    consoleOutput = true
+}
+
+task findbugs(type: FindBugs) {
+    ignoreFailures = false
+    effort = "max"
+    reportLevel = "low"
+    FileTree tree = fileTree("$project.buildDir/intermediates/classes")
+            .exclude('**/*R$*.class', '*.Manifest$.*', '**/jzlib/*')
+    classes = tree
+    source = fileTree('src/main/java/')
+    classpath = files()
+
+
 }

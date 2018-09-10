@@ -1,0 +1,5 @@
+<resources>
+    <string name="share_text">نشر نص</string>
+    <string name="enter_your_text_here_to_share">ادخل النص هنا للمشارمة</string>
+    <string name="share_image">نشر صورة</string>
+</resources>
